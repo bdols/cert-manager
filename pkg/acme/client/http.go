@@ -41,6 +41,7 @@ type Transport struct {
 	wrappedRT http.RoundTripper
 }
 
+
 // NewInstrumentedClient takes a *http.Client and returns a *http.Client that
 // has its RoundTripper wrapped with instrumentation.
 func NewInstrumentedClient(metrics *metrics.Metrics, client *http.Client) *http.Client {

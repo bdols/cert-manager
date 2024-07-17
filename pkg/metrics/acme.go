@@ -20,6 +20,10 @@ import (
 	"time"
 )
 
+func (m *Metrics) ObserveACMEScheduled(count int, labels ...string) {
+	m.acmeClientRequestDurationSeconds.WithLabelValues(labels...).Observe(float64(count))
+}
+
 // ObserveACMERequestDuration increases bucket counters for that ACME client duration.
 func (m *Metrics) ObserveACMERequestDuration(duration time.Duration, labels ...string) {
 	m.acmeClientRequestDurationSeconds.WithLabelValues(labels...).Observe(duration.Seconds())

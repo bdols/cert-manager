@@ -131,7 +131,7 @@ func (c *controller) Register(ctx *controllerpkg.Context) (workqueue.RateLimitin
 	challengeInformer.Informer().AddEventHandler(&controllerpkg.QueuingEventHandler{Queue: c.queue})
 
 	c.helper = issuer.NewHelper(c.issuerLister, c.clusterIssuerLister)
-	c.scheduler = scheduler.New(logf.NewContext(ctx.RootContext, c.log), c.challengeLister, ctx.SchedulerOptions.MaxConcurrentChallenges)
+	c.scheduler = scheduler.New(logf.NewContext(ctx.RootContext, c.log), c.challengeLister, ctx.SchedulerOptions.MaxConcurrentChallenges, ctx.Metrics)
 	c.recorder = ctx.Recorder
 	c.accountRegistry = ctx.ACMEOptions.AccountRegistry
 

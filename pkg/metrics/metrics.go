@@ -58,6 +58,7 @@ type Metrics struct {
 	certificateExpiryTimeSeconds       *prometheus.GaugeVec
 	certificateRenewalTimeSeconds      *prometheus.GaugeVec
 	certificateReadyStatus             *prometheus.GaugeVec
+	acmeScheduled                      *prometheus.GaugeVec
 	acmeClientRequestDurationSeconds   *prometheus.SummaryVec
 	acmeClientRequestCount             *prometheus.CounterVec
 	venafiClientRequestDurationSeconds *prometheus.SummaryVec
@@ -126,6 +127,14 @@ func New(log logr.Logger, c clock.Clock) *Metrics {
 				Help:      "The ready status of the certificate.",
 			},
 			[]string{"name", "namespace", "condition", "issuer_name", "issuer_kind", "issuer_group"},
+		)
+		acmeScheduled = prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "acme_client_scheduled",
+				Help:      "The ready status of the certificate.",
+			},
+			[]string{"scheme", "host", "issuer_name", "issuer_kind", "issuer_group"},
 		)
 
 		// acmeClientRequestCount is a Prometheus summary to collect the number of
@@ -203,6 +212,7 @@ func New(log logr.Logger, c clock.Clock) *Metrics {
 		certificateExpiryTimeSeconds:       certificateExpiryTimeSeconds,
 		certificateRenewalTimeSeconds:      certificateRenewalTimeSeconds,
 		certificateReadyStatus:             certificateReadyStatus,
+		acmeScheduled:                      acmeScheduled,
 		acmeClientRequestCount:             acmeClientRequestCount,
 		acmeClientRequestDurationSeconds:   acmeClientRequestDurationSeconds,
 		venafiClientRequestDurationSeconds: venafiClientRequestDurationSeconds,
@@ -220,6 +230,7 @@ func (m *Metrics) NewServer(ln net.Listener) *http.Server {
 	m.registry.MustRegister(m.certificateExpiryTimeSeconds)
 	m.registry.MustRegister(m.certificateRenewalTimeSeconds)
 	m.registry.MustRegister(m.certificateReadyStatus)
+	m.registry.MustRegister(m.acmeScheduled)
 	m.registry.MustRegister(m.acmeClientRequestDurationSeconds)
 	m.registry.MustRegister(m.venafiClientRequestDurationSeconds)
 	m.registry.MustRegister(m.acmeClientRequestCount)
