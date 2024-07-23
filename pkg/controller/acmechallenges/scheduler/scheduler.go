@@ -45,7 +45,6 @@ type schedulerMetricLabels struct {
 	name      string
 }
 
-
 // New will construct a new instance of a scheduler
 func New(ctx context.Context, l cmacmelisters.ChallengeLister, maxConcurrentChallenges int, metrics *metrics.Metrics) *Scheduler {
 	log := logs.FromContext(ctx, "challenge-scheduler")
