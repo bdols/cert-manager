@@ -160,7 +160,6 @@ func (a *Acme) Setup(ctx context.Context) error {
 	// this function.
 	a.accountRegistry.RemoveClient(string(a.issuer.GetUID()))
 
-
 	httpClient := accounts.BuildHTTPClientWithCABundle(a.metrics, a.issuer.GetSpec().ACME.SkipTLSVerify, a.issuer.GetSpec().ACME.CABundle)
 
 	cl := a.clientBuilder(httpClient, *a.issuer.GetSpec().ACME, rsaPk, a.userAgent)

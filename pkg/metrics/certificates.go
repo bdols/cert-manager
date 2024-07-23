@@ -26,7 +26,6 @@ import (
 
 // UpdateCertificate will update the given Certificate's metrics for its expiry, renewal, and status
 // condition.
-
 func (m *Metrics) UpdateCertificate(crt *cmapi.Certificate) {
 	m.updateCertificateStatus(crt)
 	m.updateCertificateExpiry(crt)

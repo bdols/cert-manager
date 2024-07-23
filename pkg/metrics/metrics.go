@@ -58,7 +58,9 @@ type Metrics struct {
 	certificateExpiryTimeSeconds       *prometheus.GaugeVec
 	certificateRenewalTimeSeconds      *prometheus.GaugeVec
 	certificateReadyStatus             *prometheus.GaugeVec
-	acmeScheduled                      *prometheus.GaugeVec
+	certificateAcmeChallengeStatus     *prometheus.GaugeVec
+	certificateAcmeOrderStatus         *prometheus.GaugeVec
+	acmeScheduled                      *prometheus.CounterVec
 	acmeClientRequestDurationSeconds   *prometheus.SummaryVec
 	acmeClientRequestCount             *prometheus.CounterVec
 	venafiClientRequestDurationSeconds *prometheus.SummaryVec
@@ -128,13 +130,32 @@ func New(log logr.Logger, c clock.Clock) *Metrics {
 			},
 			[]string{"name", "namespace", "condition", "issuer_name", "issuer_kind", "issuer_group"},
 		)
-		acmeScheduled = prometheus.NewGaugeVec(
+
+		certificateAcmeChallengeStatus = prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "certificate_acme_challenge_status",
+				Help:      "The ready status of the certificate.",
+			},
+			[]string{"name", "namespace", "issuer_name", "issuer_kind", "issuer_group", "state"},
+		)
+
+		certificateAcmeOrderStatus = prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "certificate_acme_order_status",
+				Help:      "The ready status of the certificate.",
+			},
+			[]string{"name", "namespace", "issuer_name", "issuer_kind", "issuer_group", "state"},
+		)
+
+		acmeScheduled = prometheus.NewCounterVec(
+			prometheus.CounterOpts{
 				Namespace: namespace,
 				Name:      "acme_client_scheduled",
 				Help:      "The ready status of the certificate.",
 			},
-			[]string{"scheme", "host", "issuer_name", "issuer_kind", "issuer_group"},
+			[]string{"issuer_name", "namespace"},
 		)
 
 		// acmeClientRequestCount is a Prometheus summary to collect the number of
@@ -212,6 +233,8 @@ func New(log logr.Logger, c clock.Clock) *Metrics {
 		certificateExpiryTimeSeconds:       certificateExpiryTimeSeconds,
 		certificateRenewalTimeSeconds:      certificateRenewalTimeSeconds,
 		certificateReadyStatus:             certificateReadyStatus,
+		certificateAcmeChallengeStatus:     certificateAcmeChallengeStatus,
+		certificateAcmeOrderStatus:         certificateAcmeOrderStatus,
 		acmeScheduled:                      acmeScheduled,
 		acmeClientRequestCount:             acmeClientRequestCount,
 		acmeClientRequestDurationSeconds:   acmeClientRequestDurationSeconds,
@@ -230,6 +253,8 @@ func (m *Metrics) NewServer(ln net.Listener) *http.Server {
 	m.registry.MustRegister(m.certificateExpiryTimeSeconds)
 	m.registry.MustRegister(m.certificateRenewalTimeSeconds)
 	m.registry.MustRegister(m.certificateReadyStatus)
+	m.registry.MustRegister(m.certificateAcmeChallengeStatus)
+	m.registry.MustRegister(m.certificateAcmeOrderStatus)
 	m.registry.MustRegister(m.acmeScheduled)
 	m.registry.MustRegister(m.acmeClientRequestDurationSeconds)
 	m.registry.MustRegister(m.venafiClientRequestDurationSeconds)

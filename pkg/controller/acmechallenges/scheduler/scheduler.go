@@ -40,12 +40,17 @@ type Scheduler struct {
 	metrics                 *metrics.Metrics
 }
 
+type schedulerMetricLabels struct {
+	namespace string
+	name      string
+}
+
 
 // New will construct a new instance of a scheduler
 func New(ctx context.Context, l cmacmelisters.ChallengeLister, maxConcurrentChallenges int, metrics *metrics.Metrics) *Scheduler {
 	log := logs.FromContext(ctx, "challenge-scheduler")
 	return &Scheduler{log: log, challengeLister: l, maxConcurrentChallenges: maxConcurrentChallenges,
-			metrics: metrics}
+		metrics: metrics}
 }
 
 // ScheduleN will return a maximum of N challenge resources that should be
@@ -88,7 +93,30 @@ func (s *Scheduler) selectChallengesToSchedule(candidates []*cmacme.Challenge, n
 	if len(candidates) > n {
 		candidates = candidates[:n]
 	}
+
+	for k, v := range s.surveyChallenges(candidates) {
+		labels := []string{
+			k.name,
+			k.namespace,
+		}
+		s.metrics.ObserveACMEScheduled(v, labels...)
+	}
 	return candidates
+}
+
+func (s *Scheduler) surveyChallenges(candidates []*cmacme.Challenge) map[schedulerMetricLabels]int {
+	measurements := make(map[schedulerMetricLabels]int)
+	for _, ch := range candidates {
+		if ch.Spec.IssuerRef.Kind == "ClusterIssuer" {
+			measurements[schedulerMetricLabels{name: ch.Spec.IssuerRef.Name,
+				namespace: "-"}] += 1
+		} else {
+			measurements[schedulerMetricLabels{name: ch.Spec.IssuerRef.Name,
+				namespace: ch.ObjectMeta.Namespace}] += 1
+		}
+	}
+	return measurements
+
 }
 
 // determineChallengeCandidates will determine which, if any, challenges can

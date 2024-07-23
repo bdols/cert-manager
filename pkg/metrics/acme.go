@@ -18,10 +18,44 @@ package metrics
 
 import (
 	"time"
+
+	cmacme "github.com/cert-manager/cert-manager/pkg/apis/acme/v1"
 )
 
+func (m *Metrics) ObserveACMEChallengeStateChange(ch *cmacme.Challenge) {
+	m.ObserveACMEChallengeStateChangeWithTime(ch, time.Now())
+}
+
+func (m *Metrics) ObserveACMEChallengeStateChangeWithTime(ch *cmacme.Challenge, t time.Time) {
+	labels := []string{
+		ch.GetObjectMeta().GetNamespace(),
+		ch.GetObjectMeta().GetName(),
+		ch.Spec.IssuerRef.Name,
+		ch.Spec.IssuerRef.Kind,
+		ch.Spec.IssuerRef.Group,
+		string(ch.Status.State),
+	}
+	m.certificateAcmeOrderStatus.WithLabelValues(labels...).Set(float64(t.Unix()))
+}
+
+func (m *Metrics) ObserveACMEOrderStateChange(o *cmacme.Order) {
+	m.observeACMEOrderStateChangeWithTime(o, time.Now())
+}
+
+func (m *Metrics) observeACMEOrderStateChangeWithTime(o *cmacme.Order, t time.Time) {
+	labels := []string{
+		o.GetObjectMeta().GetNamespace(),
+		o.GetObjectMeta().GetName(),
+		o.Spec.IssuerRef.Name,
+		o.Spec.IssuerRef.Kind,
+		o.Spec.IssuerRef.Group,
+		string(o.Status.State),
+	}
+	m.certificateAcmeOrderStatus.WithLabelValues(labels...).Set(float64(t.Unix()))
+}
+
 func (m *Metrics) ObserveACMEScheduled(count int, labels ...string) {
-	m.acmeClientRequestDurationSeconds.WithLabelValues(labels...).Observe(float64(count))
+	m.acmeScheduled.WithLabelValues(labels...).Add(float64(count))
 }
 
 // ObserveACMERequestDuration increases bucket counters for that ACME client duration.
