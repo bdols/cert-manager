@@ -373,14 +373,14 @@ config:
     StableCertificateRequestName: true
     UseCertificateRequestBasicConstraints: true
     ValidateCAA: true
+  # Configure the metrics server for TLS
+  # See https://cert-manager.io/docs/devops-tips/prometheus-metrics/#tls
   metricsTLSConfig:
     dynamic:
       secretNamespace: "cert-manager"
       secretName: "cert-manager-metrics-ca"
       dnsNames:
       - cert-manager-metrics
-      - cert-manager-metrics.cert-manager
-      - cert-manager-metrics.cert-manager.svc
 ```
 #### **dns01RecursiveNameservers** ~ `string`
 > Default value:
@@ -660,9 +660,9 @@ enableServiceLinks indicates whether information about services should be inject
 > true
 > ```
 
-Enable Prometheus monitoring for the cert-manager controller to use with the. Prometheus Operator. If this option is enabled without enabling `prometheus.servicemonitor.enabled` or  
-`prometheus.podmonitor.enabled`, 'prometheus.io' annotations are added to the cert-manager Deployment  
-resources. Additionally, a service is created which can be used together with your own ServiceMonitor (managed outside of this Helm chart). Otherwise, a ServiceMonitor/ PodMonitor is created.
+Enable Prometheus monitoring for the cert-manager controller and webhook. If you use the Prometheus Operator, set prometheus.podmonitor.enabled or prometheus.servicemonitor.enabled, to create a PodMonitor or a  
+ServiceMonitor resource.  
+Otherwise, 'prometheus.io' annotations are added to the cert-manager and cert-manager-webhook Deployments. Note that you can not enable both PodMonitor and ServiceMonitor as they are mutually exclusive. Enabling both will result in a error.
 #### **prometheus.servicemonitor.enabled** ~ `bool`
 > Default value:
 > ```yaml
@@ -828,6 +828,15 @@ endpointAdditionalProperties:
    sourceLabels:
    - __meta_kubernetes_pod_node_name
    targetLabel: instance
+ # Configure the PodMonitor for TLS connections
+ # See https://cert-manager.io/docs/devops-tips/prometheus-metrics/#tls
+ scheme: https
+ tlsConfig:
+   serverName: cert-manager-metrics
+   ca:
+     secret:
+       name: cert-manager-metrics-ca
+       key: "tls.crt"
 ```
 
 
@@ -878,6 +887,14 @@ kind: WebhookConfiguration
 # This should be uncommented and set as a default by the chart once
 # the apiVersion of WebhookConfiguration graduates beyond v1alpha1.
 securePort: 10250
+# Configure the metrics server for TLS
+# See https://cert-manager.io/docs/devops-tips/prometheus-metrics/#tls
+metricsTLSConfig:
+  dynamic:
+    secretNamespace: "cert-manager"
+    secretName: "cert-manager-metrics-ca"
+    dnsNames:
+    - cert-manager-metrics
 ```
 #### **webhook.strategy** ~ `object`
 > Default value:
@@ -1326,6 +1343,14 @@ logging:
  format: text
 leaderElectionConfig:
  namespace: kube-system
+# Configure the metrics server for TLS
+# See https://cert-manager.io/docs/devops-tips/prometheus-metrics/#tls
+metricsTLSConfig:
+  dynamic:
+    secretNamespace: "cert-manager"
+    secretName: "cert-manager-metrics-ca"
+    dnsNames:
+    - cert-manager-metrics
 ```
 #### **cainjector.strategy** ~ `object`
 > Default value:
@@ -1395,6 +1420,10 @@ Optional additional annotations to add to the cainjector Deployment.
 #### **cainjector.podAnnotations** ~ `object`
 
 Optional additional annotations to add to the cainjector Pods.
+
+#### **cainjector.serviceAnnotations** ~ `object`
+
+Optional additional annotations to add to the cainjector metrics Service.
 
 #### **cainjector.extraArgs** ~ `array`
 > Default value:
@@ -1502,6 +1531,13 @@ topologySpreadConstraints:
 > ```
 
 Optional additional labels to add to the CA Injector Pods.
+#### **cainjector.serviceLabels** ~ `object`
+> Default value:
+> ```yaml
+> {}
+> ```
+
+Optional additional labels to add to the CA Injector metrics Service.
 #### **cainjector.image.registry** ~ `string`
 
 The container registry to pull the cainjector image from.
