@@ -164,6 +164,7 @@ func (c *controller) worker(ctx context.Context) {
 				}
 
 				c.queue.AddRateLimited(obj)
+				log.Info("item has been requeued the following number of times:", c.queue.NumRequeues(obj))
 				return
 			}
 			log.V(logf.DebugLevel).Info("finished processing work item")
