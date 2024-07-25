@@ -226,7 +226,7 @@ func (c *controller) handleError(ctx context.Context, ch *cmacme.Challenge, err 
 	if acmeErr, ok = err.(*acmeapi.Error); !ok {
 		ch.Status.State = cmacme.Errored
 		ch.Status.Reason = fmt.Sprintf("unexpected error: %v", err)
-		log.V(logf.InfoLevel).Info("zerossl: unexpected error:", err)
+		logf.V(logf.InfoLevel).Infof("zerossl: unexpected error: %v", err)
 		return err
 	}
 
