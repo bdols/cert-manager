@@ -133,7 +133,7 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 		if err != nil {
 			log.Error(err, "error synchronizing with ACME server")
 			ch.Status.Reason = fmt.Sprintf("error synchronizing with ACME server: %v", err)
-			return c.handleError(ch, err)
+			return c.handleError(ctx, ch, err)
 		}
 
 		// if the state has not changed, return an error
@@ -156,7 +156,7 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 		// Find out which identity the ACME server says it will use.
 		dir, err := cl.Discover(ctx)
 		if err != nil {
-			return c.handleError(ch, err)
+			return c.handleError(ctx, ch, err)
 		}
 		// TODO(dmo): figure out if missing CAA identity in directory
 		// means no CAA check is performed by ACME server or if any valid
@@ -176,6 +176,7 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 	}
 
 	if !ch.Status.Presented {
+		log.V(logf.InfoLevel).Info("zerossl debug: pre-present")
 		err := solver.Present(ctx, genericIssuer, ch)
 		if err != nil {
 			c.recorder.Eventf(ch, corev1.EventTypeWarning, reasonPresentError, "Error presenting challenge: %v", err)
@@ -214,14 +215,18 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 // handleError will handle ACME error types, updating the challenge resource
 // with any new information found whilst inspecting the error response.
 // This may include marking the challenge as expired.
-func (c *controller) handleError(ch *cmacme.Challenge, err error) error {
+func (c *controller) handleError(ctx context.Context, ch *cmacme.Challenge, err error) error {
 	if err == nil {
 		return nil
 	}
+	log := logf.FromContext(ctx, "handleError")
 
 	var acmeErr *acmeapi.Error
 	var ok bool
 	if acmeErr, ok = err.(*acmeapi.Error); !ok {
+		ch.Status.State = cmacme.Errored
+		ch.Status.Reason = fmt.Sprintf("unexpected error: %v", err)
+		log.V(logf.InfoLevel).Info("zerossl: unexpected error:", err)
 		return err
 	}
 
@@ -377,7 +382,7 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 	if err != nil {
 		log.Error(err, "error accepting challenge")
 		ch.Status.Reason = fmt.Sprintf("Error accepting challenge: %v", err)
-		return c.handleError(ch, err)
+		return c.handleError(ctx, ch, err)
 	}
 
 	log.V(logf.DebugLevel).Info("waiting for authorization for domain")
@@ -385,7 +390,7 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 	if err != nil {
 		log.Error(err, "error waiting for authorization")
 		ch.Status.Reason = fmt.Sprintf("Error waiting for authorization: %v", err)
-		return c.handleAuthorizationError(ch, err)
+		return c.handleAuthorizationError(ctx, ch, err)
 	}
 
 	ch.Status.State = cmacme.State(authorization.Status)
@@ -396,10 +401,10 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 	return nil
 }
 
-func (c *controller) handleAuthorizationError(ch *cmacme.Challenge, err error) error {
+func (c *controller) handleAuthorizationError(ctx context.Context, ch *cmacme.Challenge, err error) error {
 	authErr, ok := err.(*acmeapi.AuthorizationError)
 	if !ok {
-		return c.handleError(ch, err)
+		return c.handleError(ctx, ch, err)
 	}
 
 	// TODO: the AuthorizationError above could technically contain the final
