@@ -223,8 +223,8 @@ func (c *controller) handleError(ch *cmacme.Challenge, err error) error {
 	var ok bool
 	if acmeErr, ok = err.(*acmeapi.Error); !ok {
 		ch.Status.State = cmacme.Errored
-		ch.Status.Reason = fmt.Sprintf("unexpected error: %v", err)
-		logf.V(logf.InfoLevel).Infof("zerossl: unexpected error: %v", err)
+		ch.Status.Reason = fmt.Sprintf("unexpected non-ACME API error: %v", err)
+		logf.V(logf.ErrorLevel).ErrorS(err, "unexpected non-ACME API error")
 		return err
 	}
 
