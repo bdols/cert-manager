@@ -172,20 +172,30 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 
 	solver, err := c.solverFor(ch.Spec.Type)
 	if err != nil {
+		solverErrorMessage := fmt.Sprintf("error locating solver for %s in %s of %s: %v", ch.ObjectMeta.Name, ch.ObjectMeta.Namespace, ch.Spec.Type, err)
+		ch.Status.Reason = solverErrorMessage
+		log.V(logf.InfoLevel).Info(solverErrorMessage)
 		return err
 	}
 
 	if !ch.Status.Presented {
 		log.V(logf.InfoLevel).Info("zerossl debug: pre-present")
+		metricLabels := []string{
+			genericIssuer.GetName(),
+			ch.GetNamespace(),
+		}
 		err := solver.Present(ctx, genericIssuer, ch)
 		if err != nil {
 			c.recorder.Eventf(ch, corev1.EventTypeWarning, reasonPresentError, "Error presenting challenge: %v", err)
 			ch.Status.Reason = err.Error()
+
+			c.metrics.ObserveACMEPresentFailure(1, metricLabels...)
 			return err
 		}
 
 		ch.Status.Presented = true
 		c.recorder.Eventf(ch, corev1.EventTypeNormal, reasonPresented, "Presented challenge using %s challenge mechanism", ch.Spec.Type)
+		c.metrics.ObserveACMEPresentSuccess(1, metricLabels...)
 	}
 
 	err = solver.Check(ctx, genericIssuer, ch)

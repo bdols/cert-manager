@@ -66,6 +66,14 @@ func (m *Metrics) ObserveACMEScheduled(count int, labels ...string) {
 	m.acmeScheduled.WithLabelValues(labels...).Add(float64(count))
 }
 
+func (m *Metrics) ObserveACMEPresentSuccess(count int, labels ...string) {
+	m.acmePresentSuccess.WithLabelValues(labels...).Add(float64(count))
+}
+
+func (m *Metrics) ObserveACMEPresentFailure(count int, labels ...string) {
+	m.acmePresentFailure.WithLabelValues(labels...).Add(float64(count))
+}
+
 // ObserveACMERequestDuration increases bucket counters for that ACME client duration.
 func (m *Metrics) ObserveACMERequestDuration(duration time.Duration, labels ...string) {
 	m.acmeClientRequestDurationSeconds.WithLabelValues(labels...).Observe(duration.Seconds())

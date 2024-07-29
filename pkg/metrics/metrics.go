@@ -61,6 +61,8 @@ type Metrics struct {
 	certificateAcmeChallengeStatus     *prometheus.GaugeVec
 	certificateAcmeOrderStatus         *prometheus.GaugeVec
 	acmeScheduled                      *prometheus.CounterVec
+	acmePresentSuccess                 *prometheus.CounterVec
+	acmePresentFailure                 *prometheus.CounterVec
 	acmeClientRequestDurationSeconds   *prometheus.SummaryVec
 	acmeClientRequestCount             *prometheus.CounterVec
 	venafiClientRequestDurationSeconds *prometheus.SummaryVec
@@ -158,6 +160,24 @@ func New(log logr.Logger, c clock.Clock) *Metrics {
 			[]string{"issuer_name", "namespace"},
 		)
 
+		acmePresentSuccess = prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "acme_client_presented_success",
+				Help:      "The number of ACME challenges presented to DNS that succeeded",
+			},
+			[]string{"issuer_name", "namespace"},
+		)
+
+		acmePresentFailure = prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "acme_client_presented_failure",
+				Help:      "The number of ACME challenges presented to DNS that failed",
+			},
+			[]string{"issuer_name", "namespace"},
+		)
+
 		// acmeClientRequestCount is a Prometheus summary to collect the number of
 		// requests made to each endpoint with the ACME client.
 		acmeClientRequestCount = prometheus.NewCounterVec(
@@ -236,6 +256,8 @@ func New(log logr.Logger, c clock.Clock) *Metrics {
 		certificateAcmeChallengeStatus:     certificateAcmeChallengeStatus,
 		certificateAcmeOrderStatus:         certificateAcmeOrderStatus,
 		acmeScheduled:                      acmeScheduled,
+		acmePresentSuccess:                 acmePresentSuccess,
+		acmePresentFailure:                 acmePresentFailure,
 		acmeClientRequestCount:             acmeClientRequestCount,
 		acmeClientRequestDurationSeconds:   acmeClientRequestDurationSeconds,
 		venafiClientRequestDurationSeconds: venafiClientRequestDurationSeconds,
@@ -256,6 +278,8 @@ func (m *Metrics) NewServer(ln net.Listener) *http.Server {
 	m.registry.MustRegister(m.certificateAcmeChallengeStatus)
 	m.registry.MustRegister(m.certificateAcmeOrderStatus)
 	m.registry.MustRegister(m.acmeScheduled)
+	m.registry.MustRegister(m.acmePresentSuccess)
+	m.registry.MustRegister(m.acmePresentFailure)
 	m.registry.MustRegister(m.acmeClientRequestDurationSeconds)
 	m.registry.MustRegister(m.venafiClientRequestDurationSeconds)
 	m.registry.MustRegister(m.acmeClientRequestCount)
