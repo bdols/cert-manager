@@ -293,6 +293,7 @@ func (c *controller) handleFinalizer(ctx context.Context, ch *cmacme.Challenge) 
 		return nil
 	}
 
+	log.V(logf.InfoLevel).Info("cleaning up challenge")
 	err = solver.CleanUp(ctx, genericIssuer, ch)
 	if err != nil {
 		c.recorder.Eventf(ch, corev1.EventTypeWarning, reasonCleanUpError, "Error cleaning up challenge: %v", err)
