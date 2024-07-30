@@ -44,6 +44,7 @@ import (
 	controllerpkg "github.com/cert-manager/cert-manager/pkg/controller"
 	"github.com/cert-manager/cert-manager/pkg/controller/certificates"
 	logf "github.com/cert-manager/cert-manager/pkg/logs"
+	"github.com/cert-manager/cert-manager/pkg/metrics"
 	"github.com/cert-manager/cert-manager/pkg/scheduler"
 	utilfeature "github.com/cert-manager/cert-manager/pkg/util/feature"
 	"github.com/cert-manager/cert-manager/pkg/util/pki"
@@ -76,6 +77,7 @@ type controller struct {
 	// Apply API calls.
 	fieldManager string
 
+	metrics *metrics.Metrics
 	// The following are used for testing purposes.
 	clock              clock.Clock
 	shouldReissue      policies.Func
@@ -124,6 +126,7 @@ func NewController(
 		recorder:                 ctx.Recorder,
 		scheduledWorkQueue:       scheduler.NewScheduledWorkQueue(ctx.Clock, queue.Add),
 		fieldManager:             ctx.FieldManager,
+		metrics:                  ctx.Metrics,
 
 		// The following are used for testing purposes.
 		clock:         ctx.Clock,
@@ -193,6 +196,7 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 		message := fmt.Sprintf("Backing off from issuance due to previously failed issuance(s). Issuance will next be attempted at %v", nextIssuanceRetry)
 		log.V(logf.InfoLevel).Info(message)
 		c.scheduleRecheckOfCertificateIfRequired(log, key, delay)
+		c.metrics.UpdateCertificateReissuanceTime(input.Certificate, float64(nextIssuanceRetry.Unix()))
 		return nil
 	}
 
@@ -200,6 +204,7 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 		// ensure a resync is scheduled in the future so that we re-check
 		// Certificate resources and trigger them near expiry time
 		c.scheduleRecheckOfCertificateIfRequired(log, key, crt.Status.RenewalTime.Time.Sub(c.clock.Now()))
+		c.metrics.UpdateCertificateReissuanceTime(input.Certificate, float64(crt.Status.RenewalTime.Time.Unix()))
 	}
 
 	reason, message, reissue := c.shouldReissue(input)

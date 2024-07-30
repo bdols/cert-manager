@@ -57,6 +57,7 @@ type Metrics struct {
 	clockTimeSecondsGauge              prometheus.GaugeFunc
 	certificateExpiryTimeSeconds       *prometheus.GaugeVec
 	certificateRenewalTimeSeconds      *prometheus.GaugeVec
+	certificateReissueTimeSeconds      *prometheus.GaugeVec
 	certificateReadyStatus             *prometheus.GaugeVec
 	certificateAcmeChallengeStatus     *prometheus.GaugeVec
 	certificateAcmeOrderStatus         *prometheus.GaugeVec
@@ -120,6 +121,15 @@ func New(log logr.Logger, c clock.Clock) *Metrics {
 				Namespace: namespace,
 				Name:      "certificate_renewal_timestamp_seconds",
 				Help:      "The number of seconds before expiration time the certificate should renew.",
+			},
+			[]string{"name", "namespace", "issuer_name", "issuer_kind", "issuer_group"},
+		)
+
+		certificateReissueTimeSeconds = prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "certificate_reissue_timestamp_seconds",
+				Help:      "The date at which the certificate will be reissued. Expressed as a Unix Epoch Time.",
 			},
 			[]string{"name", "namespace", "issuer_name", "issuer_kind", "issuer_group"},
 		)
@@ -252,6 +262,7 @@ func New(log logr.Logger, c clock.Clock) *Metrics {
 		clockTimeSecondsGauge:              clockTimeSecondsGauge,
 		certificateExpiryTimeSeconds:       certificateExpiryTimeSeconds,
 		certificateRenewalTimeSeconds:      certificateRenewalTimeSeconds,
+		certificateReissueTimeSeconds:      certificateReissueTimeSeconds,
 		certificateReadyStatus:             certificateReadyStatus,
 		certificateAcmeChallengeStatus:     certificateAcmeChallengeStatus,
 		certificateAcmeOrderStatus:         certificateAcmeOrderStatus,
@@ -274,6 +285,7 @@ func (m *Metrics) NewServer(ln net.Listener) *http.Server {
 	m.registry.MustRegister(m.clockTimeSecondsGauge)
 	m.registry.MustRegister(m.certificateExpiryTimeSeconds)
 	m.registry.MustRegister(m.certificateRenewalTimeSeconds)
+	m.registry.MustRegister(m.certificateReissueTimeSeconds)
 	m.registry.MustRegister(m.certificateReadyStatus)
 	m.registry.MustRegister(m.certificateAcmeChallengeStatus)
 	m.registry.MustRegister(m.certificateAcmeOrderStatus)

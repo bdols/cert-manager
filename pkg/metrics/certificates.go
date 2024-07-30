@@ -65,6 +65,17 @@ func (m *Metrics) updateCertificateRenewalTime(crt *cmapi.Certificate) {
 
 }
 
+// updateCertificateReissuanceTime informs metrics consumers of the next reissuance attempt
+func (m *Metrics) UpdateCertificateReissuanceTime(crt *cmapi.Certificate, reissuanceTime float64) {
+
+	m.certificateReissueTimeSeconds.With(prometheus.Labels{
+		"name":         crt.Name,
+		"namespace":    crt.Namespace,
+		"issuer_name":  crt.Spec.IssuerRef.Name,
+		"issuer_kind":  crt.Spec.IssuerRef.Kind,
+		"issuer_group": crt.Spec.IssuerRef.Group}).Set(reissuanceTime)
+}
+
 // updateCertificateStatus will update the metric for that Certificate
 func (m *Metrics) updateCertificateStatus(crt *cmapi.Certificate) {
 	for _, c := range crt.Status.Conditions {
