@@ -387,7 +387,7 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 		ch.Status.State = cmacme.State(acmeChal.Status)
 		c.metrics.ObserveACMEChallengeStateChange(ch)
 	}
-	log.V(logf.InfoLevel).Info("accepting challenge via %s", ch.Spec.URL)
+	logf.V(logf.InfoLevel).Infof("accepting challenge via %s", ch.Spec.URL)
 	if err != nil {
 		log.Error(err, "error accepting challenge")
 		ch.Status.Reason = fmt.Sprintf("Error accepting challenge: %v", err)
@@ -395,7 +395,7 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 	}
 
 	log.V(logf.DebugLevel).Info("waiting for authorization for domain")
-	log.V(logf.InfoLevel).Info("waiting for authorization for domain %s", ch.Spec.AuthorizationURL)
+	logf.V(logf.InfoLevel).Infof("waiting for authorization for domain %s", ch.Spec.AuthorizationURL)
 	authorization, err := cl.WaitAuthorization(ctx, ch.Spec.AuthorizationURL)
 	if err != nil {
 		log.Error(err, "error waiting for authorization")
