@@ -293,7 +293,6 @@ func (c *controller) handleFinalizer(ctx context.Context, ch *cmacme.Challenge) 
 		return nil
 	}
 
-	log.V(logf.InfoLevel).Info("cleaning up challenge")
 	err = solver.CleanUp(ctx, genericIssuer, ch)
 	if err != nil {
 		c.recorder.Eventf(ch, corev1.EventTypeWarning, reasonCleanUpError, "Error cleaning up challenge: %v", err)
@@ -388,6 +387,7 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 		ch.Status.State = cmacme.State(acmeChal.Status)
 		c.metrics.ObserveACMEChallengeStateChange(ch)
 	}
+	log.V(logf.InfoLevel).Info("accepting challenge via %s", ch.Spec.URL)
 	if err != nil {
 		log.Error(err, "error accepting challenge")
 		ch.Status.Reason = fmt.Sprintf("Error accepting challenge: %v", err)
@@ -395,6 +395,7 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 	}
 
 	log.V(logf.DebugLevel).Info("waiting for authorization for domain")
+	log.V(logf.InfoLevel).Info("waiting for authorization for domain %s", ch.Spec.AuthorizationURL)
 	authorization, err := cl.WaitAuthorization(ctx, ch.Spec.AuthorizationURL)
 	if err != nil {
 		log.Error(err, "error waiting for authorization")
