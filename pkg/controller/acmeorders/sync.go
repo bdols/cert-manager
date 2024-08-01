@@ -57,7 +57,7 @@ var (
 
 func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 	log := logf.FromContext(ctx)
-	dbg := log.V(logf.DebugLevel)
+	dbg := log.V(logf.InfoLevel)
 
 	oldOrder := o
 	o = o.DeepCopy()
@@ -88,14 +88,14 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 
 	switch {
 	case acme.IsFailureState(o.Status.State):
-		log.V(logf.DebugLevel).Info("Doing nothing as Order is in a failed state")
+		dbg.Info("Doing nothing as Order is in a failed state")
 		// if the Order is failed there's nothing left for us to do, return nil
 		return nil
 	case o.Status.URL == "":
-		log.V(logf.DebugLevel).Info("Creating new ACME order as status.url is not set")
+		dbg.Info("Creating new ACME order as status.url is not set")
 		return c.createOrder(ctx, cl, o)
 	case o.Status.FinalizeURL == "":
-		log.V(logf.DebugLevel).Info("Updating Order status as status.finalizeURL is not set")
+		dbg.Info("Updating Order status as status.finalizeURL is not set")
 		_, err := c.updateOrderStatus(ctx, cl, o)
 		if acmeErr, ok := err.(*acmeapi.Error); ok {
 			if acmeErr.StatusCode >= 400 && acmeErr.StatusCode < 500 {
@@ -107,14 +107,14 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 		}
 		return err
 	case anyAuthorizationsMissingMetadata(o):
-		log.V(logf.DebugLevel).Info("Fetching Authorizations from ACME server as status.authorizations contains unpopulated authorizations")
+		dbg.Info("Fetching Authorizations from ACME server as status.authorizations contains unpopulated authorizations")
 		return c.fetchMetadataForAuthorizations(ctx, o, cl)
 	// TODO: is this state possible? Either remove this case or add a comment as to what path could lead to it
 	case o.Status.State == cmacme.Valid && o.Status.Certificate == nil:
-		log.V(logf.DebugLevel).Info("Order is in a Valid state but the Certificate data is empty, fetching existing Certificate")
+		dbg.Info("Order is in a Valid state but the Certificate data is empty, fetching existing Certificate")
 		return c.syncCertificateData(ctx, cl, o, genericIssuer)
 	case o.Status.State == cmacme.Valid && len(o.Status.Certificate) > 0:
-		log.V(logf.DebugLevel).Info("Order has already been completed, cleaning up any owned Challenge resources")
+		dbg.Info("Order has already been completed, cleaning up any owned Challenge resources")
 		// if the Order is valid and the certificate data has been set, clean
 		// up any owned Challenge resources and do nothing
 		return c.deleteAllChallenges(ctx, o)
@@ -141,14 +141,14 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 
 	switch {
 	case needToCreateChallenges:
-		log.V(logf.DebugLevel).Info("Creating additional Challenge resources to complete Order")
+		dbg.Info("Creating additional Challenge resources to complete Order")
 		requiredChallenges, err = ensureKeysForChallenges(cl, requiredChallenges)
 		if err != nil {
 			return err
 		}
 		return c.createRequiredChallenges(ctx, o, requiredChallenges)
 	case needToDeleteChallenges:
-		log.V(logf.DebugLevel).Info("Deleting leftover Challenge resources no longer required by Order")
+		dbg.Info("Deleting leftover Challenge resources no longer required by Order")
 		return c.deleteLeftoverChallenges(ctx, o, requiredChallenges)
 	}
 
@@ -161,7 +161,8 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 	}
 
 	if o.Status.State == cmacme.Ready {
-		log.V(logf.DebugLevel).Info("Finalizing Order as order state is 'Ready'")
+		dbg.Info("Finalizing Order as order state is 'Ready'")
+		logf.V(logf.InfoLevel).Infof("finalizing ACME order: %s", o.Status.URL)
 		return c.finalizeOrder(ctx, cl, o, genericIssuer)
 	}
 
@@ -169,7 +170,7 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 	// we can return without taking any action. This controller will resync
 	// the Order on any owned Challenge events.
 	if !anyChallengesFailed(challenges) && !allChallengesFinal(challenges) {
-		log.V(logf.DebugLevel).Info("No action taken")
+		dbg.Info("No action taken")
 		return nil
 	}
 
@@ -178,6 +179,7 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 	// if the new code does not need this ACME order, try to place it above
 	// this call to avoid extra calls to ACME.
 	acmeOrder, err := getACMEOrder(ctx, cl, o)
+	logf.V(logf.InfoLevel).Infof("getting ACME order: %s", o.Status.URL)
 	// Order probably has been deleted, we cannot recover here.
 	if acmeErr, ok := err.(*acmeapi.Error); ok {
 		if acmeErr.StatusCode >= 400 && acmeErr.StatusCode < 500 {
@@ -777,12 +779,19 @@ func getPreferredCertChain(
 // get applied using the relevant Patch API call.
 func (c *controller) updateOrApplyStatus(ctx context.Context, order *cmacme.Order) error {
 	if utilfeature.DefaultFeatureGate.Enabled(feature.ServerSideApply) {
-		return internalorders.ApplyStatus(ctx, c.cmClient, c.fieldManager, &cmacme.Order{
+		err := internalorders.ApplyStatus(ctx, c.cmClient, c.fieldManager, &cmacme.Order{
 			ObjectMeta: metav1.ObjectMeta{Namespace: order.Namespace, Name: order.Name},
 			Status:     *order.Status.DeepCopy(),
 		})
+		if err == nil {
+			c.metrics.ObserveACMEOrderStateChange(order)
+		}
+		return err
 	} else {
 		_, err := c.cmClient.AcmeV1().Orders(order.Namespace).UpdateStatus(ctx, order, metav1.UpdateOptions{})
+		if err == nil {
+			c.metrics.ObserveACMEOrderStateChange(order)
+		}
 		return err
 	}
 }
