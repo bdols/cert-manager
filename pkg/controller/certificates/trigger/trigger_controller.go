@@ -54,9 +54,9 @@ import (
 const (
 	ControllerName = "certificates-trigger"
 	// stopIncreaseBackoff is the number of issuance attempts after which the backoff period should stop to increase
-	stopIncreaseBackoff = 6 // 2 ^ (6 - 1) = 32 = maxDelay
+	stopIncreaseBackoff = 2 // 2 ^ (6 - 1) = 32 = maxDelay
 	// maxDelay is the maximum backoff period
-	maxDelay = 32 * time.Hour
+	maxDelay = 4 * time.Hour
 )
 
 // This controller observes the state of the certificate's currently

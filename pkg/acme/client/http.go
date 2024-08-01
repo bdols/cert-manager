@@ -95,8 +95,8 @@ func (it *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 func pathProcessor(path string) string {
 	p := strings.Split(path, "/")
 	// only record the first two path segments as a prometheus label value
-	if len(p) > 3 {
-		p = p[:3]
+	if len(p) > 4 {
+		p = p[:4] //TODO: undo
 	}
 	return strings.Join(p, "/")
 }
