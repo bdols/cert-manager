@@ -413,12 +413,8 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 
 	log.V(logf.DebugLevel).Info("waiting for authorization for domain")
 	logf.V(logf.InfoLevel).Infof("waiting for authorization for domain %s %s", ch.Spec.AuthorizationURL, ch.Name)
-	ctxAmended, cancelFunc := context.WithCancel(ctx)
-	go func() {
-		time.Sleep(10 * time.Second)
-		logf.V(logf.InfoLevel).Infof("cancelling waitAuthorization for domain %s %s", ch.Spec.AuthorizationURL, ch.Name)
-		cancelFunc()
-	}()
+	ctxAmended, cancelFunc := context.WithTimeout(ctx, 20 * time.Second)
+	defer cancelFunc()
 	authorization, err := cl.WaitAuthorization(ctxAmended, ch.Spec.AuthorizationURL)
 	if err != nil {
 		logf.V(logf.ErrorLevel).ErrorS(err, "error waiting for authorization")
