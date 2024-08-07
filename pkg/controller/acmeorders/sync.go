@@ -86,7 +86,7 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 		logf.V(logf.InfoLevel).Infof("whatclientorder: is empty??")
 	}
 	for k := range m {
-		logf.V(logf.InfoLevel).Infof("whatclientorder: %s", k)
+		logf.V(logf.InfoLevel).Infof("whatclientorder: %s %s", k, o.Name)
 	}
 	cl, err := c.accountRegistry.GetClient(string(genericIssuer.GetUID()))
 	if err != nil {

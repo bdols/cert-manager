@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	acmeapi "golang.org/x/crypto/acme"
 	corev1 "k8s.io/api/core/v1"
@@ -127,7 +128,7 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 		logf.V(logf.InfoLevel).Infof("whatclientchall: is empty??")
 	}
 	for k := range m {
-		logf.V(logf.InfoLevel).Infof("whatclientchall: %s", k)
+		logf.V(logf.InfoLevel).Infof("whatclientchall: %s %s", k, chOriginal.Name)
 	}
 	cl, err := c.accountRegistry.GetClient(string(genericIssuer.GetUID()))
 	// BUG
@@ -403,7 +404,7 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 		ch.Status.State = cmacme.State(acmeChal.Status)
 		c.metrics.ObserveACMEChallengeStateChange(ch)
 	}
-	logf.V(logf.InfoLevel).Infof("accepting challenge via %s", ch.Spec.URL)
+	logf.V(logf.InfoLevel).Infof("accepting challenge via %s for %s", ch.Spec.URL, ch.Name)
 	if err != nil {
 		log.Error(err, "error accepting challenge")
 		ch.Status.Reason = fmt.Sprintf("Error accepting challenge: %v", err)
@@ -411,18 +412,28 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 	}
 
 	log.V(logf.DebugLevel).Info("waiting for authorization for domain")
-	logf.V(logf.InfoLevel).Infof("waiting for authorization for domain %s", ch.Spec.AuthorizationURL)
-	authorization, err := cl.WaitAuthorization(ctx, ch.Spec.AuthorizationURL)
+	logf.V(logf.InfoLevel).Infof("waiting for authorization for domain %s %s", ch.Spec.AuthorizationURL, ch.Name)
+	ctxAmended, cancelFunc := context.WithCancel(ctx)
+	go func() {
+		time.Sleep(10 * time.Second)
+		logf.V(logf.InfoLevel).Infof("cancelling waitAuthorization for domain %s %s", ch.Spec.AuthorizationURL, ch.Name)
+		cancelFunc()
+	}()
+	authorization, err := cl.WaitAuthorization(ctxAmended, ch.Spec.AuthorizationURL)
 	if err != nil {
 		logf.V(logf.ErrorLevel).ErrorS(err, "error waiting for authorization")
 		ch.Status.Reason = fmt.Sprintf("Error waiting for authorization: %v", err)
 		return c.handleAuthorizationError(ch, err)
 	}
 
+	logf.V(logf.InfoLevel).Infof("authorization status: %s for %s", authorization.Status, ch.Name)
 	ch.Status.State = cmacme.State(authorization.Status)
+	logf.V(logf.InfoLevel).Infof("set status: %s for %s", authorization.Status, ch.Name)
 	ch.Status.Reason = "Successfully authorized domain"
+	logf.V(logf.InfoLevel).Infof("set reason: %s for %s", ch.Status.Reason, ch.Name)
 	c.recorder.Eventf(ch, corev1.EventTypeNormal, reasonDomainVerified, "Domain %q verified with %q validation", ch.Spec.DNSName, ch.Spec.Type)
 	c.metrics.ObserveACMEChallengeStateChange(ch)
+	logf.V(logf.InfoLevel).Infof("inc metric for %s", ch.Name)
 
 	return nil
 }
