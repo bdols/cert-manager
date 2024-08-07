@@ -166,6 +166,7 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 		return nil
 	}
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what35")
 		return err
 	}
 
@@ -196,6 +197,7 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 		return nil
 	}
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what36")
 		return err
 	}
 	if nextPrivateKeySecret.Data == nil || len(nextPrivateKeySecret.Data[corev1.TLSPrivateKeyKey]) == 0 {
@@ -231,6 +233,9 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 		// if no error but none exist do nothing.
 		// If no error but multiple exist, then leave to requestmanager controller
 		// to clean up.
+		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what37")
+		}
 		return err
 	}
 
@@ -241,6 +246,7 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 	// If there are violations in the spec, then the requestmanager will handle this.
 	requestViolations, err := pki.RequestMatchesSpec(req, crt.Spec)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what38")
 		return err
 	}
 	if len(requestViolations) > 0 {
@@ -311,10 +317,12 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 	// If public key does not match, do nothing (requestmanager will handle this).
 	csr, err := utilpki.DecodeX509CertificateRequestBytes(req.Spec.Request)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what39")
 		return err
 	}
 	publicKeyMatchesCSR, err := utilpki.PublicKeyMatchesCSR(pk.Public(), csr)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what390")
 		return err
 	}
 	if !publicKeyMatchesCSR {
@@ -332,6 +340,7 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 	// return early - we will sync again since the target Secret has been
 	// updated.
 	if issued, err := c.ensureTemporaryCertificate(ctx, crt, pk); err != nil || issued {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what391")
 		return err
 	}
 
@@ -365,6 +374,7 @@ func (c *controller) failIssueCertificate(ctx context.Context, log logr.Logger, 
 	apiutil.SetCertificateCondition(crt, crt.Generation, cmapi.CertificateConditionIssuing, cmmeta.ConditionFalse, reason, message)
 
 	if err := c.updateOrApplyStatus(ctx, crt, false); err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what30")
 		return err
 	}
 
@@ -384,6 +394,7 @@ func (c *controller) issueCertificate(ctx context.Context, nextRevision int, crt
 
 	pkData, err := utilpki.EncodePrivateKey(pk, crt.Spec.PrivateKey.Encoding)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what31")
 		return err
 	}
 	secretData := internal.SecretData{
@@ -397,6 +408,7 @@ func (c *controller) issueCertificate(ctx context.Context, nextRevision int, crt
 	}
 
 	if err := c.secretsUpdateData(ctx, crt, secretData); err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what32")
 		return err
 	}
 
@@ -415,6 +427,7 @@ func (c *controller) issueCertificate(ctx context.Context, nextRevision int, crt
 	crt.Status.LastFailureTime = nil
 
 	if err := c.updateOrApplyStatus(ctx, crt, true); err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what33")
 		return err
 	}
 
@@ -457,6 +470,9 @@ func (c *controller) updateOrApplyStatus(ctx context.Context, crt *cmapi.Certifi
 		})
 	} else {
 		_, err := c.client.CertmanagerV1().Certificates(crt.Namespace).UpdateStatus(ctx, crt, metav1.UpdateOptions{})
+		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what34")
+		}
 		return err
 	}
 }

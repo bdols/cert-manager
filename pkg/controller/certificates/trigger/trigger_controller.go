@@ -54,7 +54,7 @@ import (
 const (
 	ControllerName = "certificates-trigger"
 	// stopIncreaseBackoff is the number of issuance attempts after which the backoff period should stop to increase
-	stopIncreaseBackoff = 2 // 2 ^ (6 - 1) = 32 = maxDelay
+	stopIncreaseBackoff = 8 // 2 ^ (6 - 1) = 32 = maxDelay
 	// maxDelay is the maximum backoff period
 	maxDelay = 4 * time.Hour
 )
@@ -153,6 +153,7 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 		return nil
 	}
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what1")
 		return err
 	}
 	if apiutil.CertificateHasCondition(crt, cmapi.CertificateCondition{
@@ -170,6 +171,7 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 	// and the API server of the issuing CA.
 	isOwner, duplicates, err := internalcertificates.CertificateOwnsSecret(ctx, c.certificateLister, c.secretLister, crt)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what2")
 		return err
 	}
 	if !isOwner {
@@ -186,6 +188,7 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 
 	input, err := c.dataForCertificate(ctx, crt)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what3")
 		return err
 	}
 
@@ -222,6 +225,7 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 	crt = crt.DeepCopy()
 	apiutil.SetCertificateCondition(crt, crt.Generation, cmapi.CertificateConditionIssuing, cmmeta.ConditionTrue, reason, message)
 	if err := c.updateOrApplyStatus(ctx, crt); err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what4")
 		return err
 	}
 	c.recorder.Event(crt, corev1.EventTypeNormal, "Issuing", message)
@@ -244,6 +248,9 @@ func (c *controller) updateOrApplyStatus(ctx context.Context, crt *cmapi.Certifi
 		})
 	} else {
 		_, err := c.client.CertmanagerV1().Certificates(crt.Namespace).UpdateStatus(ctx, crt, metav1.UpdateOptions{})
+		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what5")
+		}
 		return err
 	}
 }
@@ -292,7 +299,7 @@ func shouldBackoffReissuingOnFailure(log logr.Logger, c clock.Clock, crt *cmapi.
 	now := c.Now()
 	durationSinceFailure := now.Sub(crt.Status.LastFailureTime.Time)
 
-	initialDelay := time.Hour
+	initialDelay := time.Minute * 3
 	delay := initialDelay
 	failedIssuanceAttempts := 0
 	// It is possible that crt.Status.LastFailureTime != nil &&
@@ -301,7 +308,7 @@ func shouldBackoffReissuingOnFailure(log logr.Logger, c clock.Clock, crt *cmapi.
 	// attempts were introduced). In such case delay = initialDelay.
 	if crt.Status.FailedIssuanceAttempts != nil {
 		failedIssuanceAttempts = *crt.Status.FailedIssuanceAttempts
-		delay = time.Hour * time.Duration(math.Pow(2, float64(failedIssuanceAttempts-1)))
+		delay = time.Minute * time.Duration(math.Pow(2, float64(failedIssuanceAttempts-1)))
 	}
 
 	// Ensure that maximum returned delay is 32 hours

@@ -103,7 +103,7 @@ func certificateRequestsForSecret(log logr.Logger,
 		}
 
 		dbg = logf.WithRelatedResource(dbg, issuerObj)
-		dbg.Info("ensuring issuer type matches this controller")
+		// dbg.Info("ensuring issuer type matches this controller")
 
 		issuerType, err := apiutil.NameForIssuer(issuerObj)
 		if err != nil {

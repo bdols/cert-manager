@@ -171,6 +171,7 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 			return nil
 		}
 
+		logf.V(logf.ErrorLevel).ErrorS(err, "what20")
 		return err
 	}
 

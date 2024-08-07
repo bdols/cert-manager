@@ -81,8 +81,16 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 	if err != nil {
 		return fmt.Errorf("error reading (cluster)issuer %q: %v", o.Spec.IssuerRef.Name, err)
 	}
+	m := c.accountRegistry.ListClients()
+	if len(m) == 0 {
+		logf.V(logf.InfoLevel).Infof("whatclientorder: is empty??")
+	}
+	for k := range m {
+		logf.V(logf.InfoLevel).Infof("whatclientorder: %s", k)
+	}
 	cl, err := c.accountRegistry.GetClient(string(genericIssuer.GetUID()))
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what17.1")
 		return err
 	}
 
@@ -105,6 +113,7 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 				return nil
 			}
 		}
+		logf.V(logf.ErrorLevel).ErrorS(err, "what70")
 		return err
 	case anyAuthorizationsMissingMetadata(o):
 		dbg.Info("Fetching Authorizations from ACME server as status.authorizations contains unpopulated authorizations")
@@ -131,11 +140,13 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 	dbg.Info("Determining if any challenge resources need to be created")
 	needToCreateChallenges, err := c.anyRequiredChallengesDoNotExist(requiredChallenges)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what71")
 		return err
 	}
 	dbg.Info("Determining if any challenge resources need to be cleaned up")
 	needToDeleteChallenges, err := c.anyLeftoverChallengesExist(o, requiredChallenges)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what72")
 		return err
 	}
 
@@ -144,6 +155,7 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 		dbg.Info("Creating additional Challenge resources to complete Order")
 		requiredChallenges, err = ensureKeysForChallenges(cl, requiredChallenges)
 		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what73")
 			return err
 		}
 		return c.createRequiredChallenges(ctx, o, requiredChallenges)
@@ -157,6 +169,7 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 	// any Challenge resources
 	challenges, err := c.listOwnedChallenges(o)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what74")
 		return err
 	}
 
@@ -190,6 +203,7 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 		}
 	}
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what75")
 		return err
 	}
 
@@ -212,6 +226,9 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 				o.Status.Reason = fmt.Sprintf("Failed to retrieve Order resource: %v", err)
 				return nil
 			}
+		}
+		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what76")
 		}
 		return err
 
@@ -252,6 +269,9 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 				o.Status.Reason = fmt.Sprintf("Failed to retrieve Order resource: %v", err)
 				return nil
 			}
+		}
+		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what77")
 		}
 		return err
 	}
@@ -390,6 +410,7 @@ func (c *controller) fetchMetadataForAuthorizations(ctx context.Context, o *cmac
 			}
 		}
 		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what78")
 			return err
 		}
 
@@ -427,6 +448,7 @@ func (c *controller) createRequiredChallenges(ctx context.Context, o *cmacme.Ord
 			continue
 		}
 		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what79")
 			return err
 		}
 		c.recorder.Eventf(o, corev1.EventTypeNormal, reasonCreated, "Created Challenge resource %q for domain %q", ch.Name, ch.Spec.DNSName)
@@ -446,11 +468,13 @@ func (c *controller) anyLeftoverChallengesExist(o *cmacme.Order, requiredChallen
 func (c *controller) deleteLeftoverChallenges(ctx context.Context, o *cmacme.Order, requiredChallenges []*cmacme.Challenge) error {
 	leftover, err := c.determineLeftoverChallenges(o, requiredChallenges)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what700")
 		return err
 	}
 
 	for _, ch := range leftover {
 		if err := c.cmClient.AcmeV1().Challenges(ch.Namespace).Delete(ctx, ch.Name, metav1.DeleteOptions{}); err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what701")
 			return err
 		}
 	}
@@ -461,11 +485,13 @@ func (c *controller) deleteLeftoverChallenges(ctx context.Context, o *cmacme.Ord
 func (c *controller) deleteAllChallenges(ctx context.Context, o *cmacme.Order) error {
 	challenges, err := c.listOwnedChallenges(o)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what702")
 		return err
 	}
 
 	for _, ch := range challenges {
 		if err := c.cmClient.AcmeV1().Challenges(ch.Namespace).Delete(ctx, ch.Name, metav1.DeleteOptions{}); err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what703")
 			return err
 		}
 	}
@@ -481,6 +507,7 @@ func (c *controller) determineLeftoverChallenges(o *cmacme.Order, requiredChalle
 
 	ownedChallenges, err := c.listOwnedChallenges(o)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what703")
 		return nil, err
 	}
 
@@ -498,6 +525,7 @@ func (c *controller) determineLeftoverChallenges(o *cmacme.Order, requiredChalle
 func (c *controller) listOwnedChallenges(o *cmacme.Order) ([]*cmacme.Challenge, error) {
 	chs, err := c.challengeLister.Challenges(o.Namespace).List(labels.Everything())
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what704")
 		return nil, err
 	}
 
@@ -551,6 +579,7 @@ func (c *controller) finalizeOrder(ctx context.Context, cl acmecl.Interface, o *
 			return nil
 		}
 		if getOrderErr != nil {
+			logf.V(logf.ErrorLevel).ErrorS(getOrderErr, "what705")
 			return getOrderErr
 		}
 		if acmeOrder.Status == acmeapi.StatusValid {
@@ -639,6 +668,7 @@ func (c *controller) syncCertificateData(ctx context.Context, cl acmecl.Interfac
 		}
 	}
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what706")
 		return err
 	}
 	if acmeOrder == nil {
@@ -666,12 +696,14 @@ func (c *controller) syncCertificateDataWithOrder(ctx context.Context, cl acmecl
 		}
 	}
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what707")
 		return err
 	}
 
 	if issuer.GetSpec().ACME != nil && issuer.GetSpec().ACME.PreferredChain != "" {
 		found, preferredCertChain, err := getPreferredCertChain(ctx, cl, acmeOrder.CertURL, certs, issuer.GetSpec().ACME.PreferredChain)
 		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what708")
 			return err
 		}
 		if found {
@@ -681,6 +713,7 @@ func (c *controller) syncCertificateDataWithOrder(ctx context.Context, cl acmecl
 
 	err = c.storeCertificateOnStatus(ctx, o, certs)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what709")
 		return err
 	}
 
@@ -697,6 +730,7 @@ func getACMEOrder(ctx context.Context, cl acmecl.Interface, o *cmacme.Order) (*a
 	log.V(logf.DebugLevel).Info("Fetching Order metadata from ACME server")
 	acmeOrder, err := cl.GetOrder(ctx, o.Status.URL)
 	if err != nil {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what770")
 		return nil, err
 	}
 
@@ -721,6 +755,7 @@ func getPreferredCertChain(
 		// Check topmost certificate
 		cert, err := x509.ParseCertificate(chain[len(chain)-1])
 		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what771")
 			return false, fmt.Errorf("error parsing certificate chain: %w", err)
 		}
 
@@ -741,6 +776,7 @@ func getPreferredCertChain(
 	{
 		match, err := isMatch("default", certBundle)
 		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what772")
 			return false, nil, err
 		}
 		if match {
@@ -752,17 +788,20 @@ func getPreferredCertChain(
 	{
 		altURLs, err := cl.ListCertAlternates(ctx, certURL)
 		if err != nil {
+			logf.V(logf.ErrorLevel).ErrorS(err, "what773")
 			return false, nil, fmt.Errorf("error listing alternate certificate URLs: %w", err)
 		}
 
 		for _, chainURL := range altURLs {
 			certChain, err := cl.FetchCert(ctx, chainURL, true)
 			if err != nil {
+				logf.V(logf.ErrorLevel).ErrorS(err, "what774")
 				return false, nil, fmt.Errorf("error fetching certificate chain from %s: %w", chainURL, err)
 			}
 
 			match, err := isMatch(chainURL, certChain)
 			if err != nil {
+				logf.V(logf.ErrorLevel).ErrorS(err, "what775")
 				return false, nil, err
 			}
 
@@ -790,6 +829,8 @@ func (c *controller) updateOrApplyStatus(ctx context.Context, order *cmacme.Orde
 	}
 	if err == nil {
 		c.metrics.ObserveACMEOrderStateChange(order)
+	} else {
+		logf.V(logf.ErrorLevel).ErrorS(err, "what776")
 	}
 	return err
 }

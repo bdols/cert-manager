@@ -158,6 +158,7 @@ func (a *Acme) Setup(ctx context.Context) error {
 	// probably don't want other controllers to use its client from the cache.
 	// We could therefore move the removing of the client up to the start of
 	// this function.
+	logf.V(logf.InfoLevel).Infof("removing ACME client from registry: %s %s", string(a.issuer.GetUID()), a.issuer.GetName())
 	a.accountRegistry.RemoveClient(string(a.issuer.GetUID()))
 
 	httpClient := accounts.BuildHTTPClientWithCABundle(a.metrics, a.issuer.GetSpec().ACME.SkipTLSVerify, a.issuer.GetSpec().ACME.CABundle)
@@ -217,6 +218,7 @@ func (a *Acme) Setup(ctx context.Context) error {
 		status = cmmeta.ConditionTrue
 
 		// ensure the cached client in the account registry is up to date
+		logf.V(logf.InfoLevel).Infof("adding ACME client to registry: %s %s", string(a.issuer.GetUID()), a.issuer.GetName())
 		a.accountRegistry.AddClient(httpClient, string(a.issuer.GetUID()), *a.issuer.GetSpec().ACME, rsaPk, a.userAgent)
 		return nil
 	}
@@ -323,6 +325,7 @@ func (a *Acme) Setup(ctx context.Context) error {
 	a.issuer.GetStatus().ACMEStatus().LastRegisteredEmail = registeredEmail
 	a.issuer.GetStatus().ACMEStatus().LastPrivateKeyHash = checksumString
 	// ensure the cached client in the account registry is up to date
+	logf.V(logf.InfoLevel).Infof("adding ACME client to registry: %s %s", string(a.issuer.GetUID()), a.issuer.GetName())
 	a.accountRegistry.AddClient(httpClient, string(a.issuer.GetUID()), *a.issuer.GetSpec().ACME, rsaPk, a.userAgent)
 
 	return nil
