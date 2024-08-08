@@ -125,15 +125,15 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 	}
 	m := c.accountRegistry.ListClients()
 	if len(m) == 0 {
-		logf.V(logf.InfoLevel).Infof("whatclientchall: is empty??")
+		log.V(logf.InfoLevel).Info("whatclientchall: is empty??")
 	}
 	for k := range m {
-		logf.V(logf.InfoLevel).Infof("whatclientchall: %s %s", k, chOriginal.Name)
+		log.V(logf.InfoLevel).Info("whatclientchall: %s %s", k, chOriginal.Name)
 	}
 	cl, err := c.accountRegistry.GetClient(string(genericIssuer.GetUID()))
 	// BUG
 	if err != nil {
-		logf.V(logf.ErrorLevel).ErrorS(err, "what17")
+		log.V(logf.ErrorLevel).Error(err, "what17")
 		return err
 	}
 
@@ -174,7 +174,7 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 			err := dnsutil.ValidateCAA(ctx, ch.Spec.DNSName, dir.CAA, ch.Spec.Wildcard, c.dns01Nameservers)
 			if err != nil {
 				ch.Status.Reason = fmt.Sprintf("CAA self-check failed: %s", err)
-				logf.V(logf.ErrorLevel).ErrorS(err, "what10")
+				log.V(logf.ErrorLevel).Error(err, "what10")
 				return err
 			}
 		}
@@ -185,7 +185,7 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 		solverErrorMessage := fmt.Sprintf("error locating solver for %s in %s of %s: %v", ch.ObjectMeta.Name, ch.ObjectMeta.Namespace, ch.Spec.Type, err)
 		ch.Status.Reason = solverErrorMessage
 		log.V(logf.InfoLevel).Info(solverErrorMessage)
-		logf.V(logf.ErrorLevel).ErrorS(err, "what11")
+		log.V(logf.ErrorLevel).Error(err, "what11")
 		return err
 	}
 
@@ -201,7 +201,7 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 			ch.Status.Reason = err.Error()
 
 			c.metrics.ObserveACMEPresentFailure(1, metricLabels...)
-			logf.V(logf.ErrorLevel).ErrorS(err, "what12")
+			log.V(logf.ErrorLevel).Error(err, "what12")
 			return err
 		}
 
@@ -218,7 +218,7 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 		key, err := controllerpkg.KeyFunc(ch)
 		// This is an unexpected edge case and should never occur
 		if err != nil {
-			logf.V(logf.ErrorLevel).ErrorS(err, "what13")
+			log.V(logf.ErrorLevel).Error(err, "what13")
 			return err
 		}
 
@@ -229,7 +229,7 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 
 	err = c.acceptChallenge(ctx, cl, ch)
 	if err != nil {
-		logf.V(logf.ErrorLevel).ErrorS(err, "what14")
+		log.V(logf.ErrorLevel).Error(err, "what14")
 		return err
 	}
 
@@ -412,24 +412,24 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 	}
 
 	log.V(logf.DebugLevel).Info("waiting for authorization for domain")
-	logf.V(logf.InfoLevel).Infof("waiting for authorization for domain %s %s", ch.Spec.AuthorizationURL, ch.Name)
+	log.V(logf.InfoLevel).Info("waiting for authorization for domain %s %s", ch.Spec.AuthorizationURL, ch.Name)
 	ctxAmended, cancelFunc := context.WithTimeout(ctx, 20 * time.Second)
 	defer cancelFunc()
 	authorization, err := cl.WaitAuthorization(ctxAmended, ch.Spec.AuthorizationURL)
 	if err != nil {
-		logf.V(logf.ErrorLevel).ErrorS(err, "error waiting for authorization")
+		log.V(logf.ErrorLevel).Error(err, "error waiting for authorization")
 		ch.Status.Reason = fmt.Sprintf("Error waiting for authorization: %v", err)
 		return c.handleAuthorizationError(ch, err)
 	}
 
-	logf.V(logf.InfoLevel).Infof("authorization status: %s for %s", authorization.Status, ch.Name)
+	log.V(logf.InfoLevel).Info("authorization status: %s for %s", authorization.Status, ch.Name)
 	ch.Status.State = cmacme.State(authorization.Status)
-	logf.V(logf.InfoLevel).Infof("set status: %s for %s", authorization.Status, ch.Name)
+	log.V(logf.InfoLevel).Info("set status: %s for %s", authorization.Status, ch.Name)
 	ch.Status.Reason = "Successfully authorized domain"
-	logf.V(logf.InfoLevel).Infof("set reason: %s for %s", ch.Status.Reason, ch.Name)
+	log.V(logf.InfoLevel).Info("set reason: %s for %s", ch.Status.Reason, ch.Name)
 	c.recorder.Eventf(ch, corev1.EventTypeNormal, reasonDomainVerified, "Domain %q verified with %q validation", ch.Spec.DNSName, ch.Spec.Type)
 	c.metrics.ObserveACMEChallengeStateChange(ch)
-	logf.V(logf.InfoLevel).Infof("inc metric for %s", ch.Name)
+	log.V(logf.InfoLevel).Info("inc metric for %s", ch.Name)
 
 	return nil
 }
