@@ -123,13 +123,6 @@ func (c *controller) Sync(ctx context.Context, chOriginal *cmacme.Challenge) (er
 
 		return nil
 	}
-	m := c.accountRegistry.ListClients()
-	if len(m) == 0 {
-		log.V(logf.InfoLevel).Info("whatclientchall: is empty??")
-	}
-	for k := range m {
-		log.V(logf.InfoLevel).Info("whatclientchall: %s %s", k, chOriginal.Name)
-	}
 	cl, err := c.accountRegistry.GetClient(string(genericIssuer.GetUID()))
 	// BUG
 	if err != nil {
@@ -413,11 +406,12 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 
 	log.V(logf.DebugLevel).Info("waiting for authorization for domain")
 	log.V(logf.InfoLevel).Info("waiting for authorization for domain %s %s", ch.Spec.AuthorizationURL, ch.Name)
-	ctxAmended, cancelFunc := context.WithTimeout(ctx, 20 * time.Second)
+	ctxAmended, cancelFunc := context.WithTimeout(ctx, 20*time.Second)
 	defer cancelFunc()
 	authorization, err := cl.WaitAuthorization(ctxAmended, ch.Spec.AuthorizationURL)
 	if err != nil {
-		log.V(logf.ErrorLevel).Error(err, "error waiting for authorization")
+		log.V(logf.InfoLevel).Info("error waiting for authorization for domain %s %s", ch.Spec.AuthorizationURL, ch.Name)
+		log.V(logf.ErrorLevel).Error(err, "error waiting for authorization %s %s", ch.Spec.AuthorizationURL, ch.Name)
 		ch.Status.Reason = fmt.Sprintf("Error waiting for authorization: %v", err)
 		return c.handleAuthorizationError(ch, err)
 	}

@@ -81,13 +81,6 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 	if err != nil {
 		return fmt.Errorf("error reading (cluster)issuer %q: %v", o.Spec.IssuerRef.Name, err)
 	}
-	m := c.accountRegistry.ListClients()
-	if len(m) == 0 {
-		logf.V(logf.InfoLevel).Infof("whatclientorder: is empty??")
-	}
-	for k := range m {
-		logf.V(logf.InfoLevel).Infof("whatclientorder: %s %s", k, o.Name)
-	}
 	cl, err := c.accountRegistry.GetClient(string(genericIssuer.GetUID()))
 	if err != nil {
 		logf.V(logf.ErrorLevel).ErrorS(err, "what17.1")
@@ -316,7 +309,7 @@ func (c *controller) createOrder(ctx context.Context, cl acmecl.Interface, o *cm
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("error creating new order: %v", err)
+		return fmt.Errorf("error creating new order: %v", err) // BUG
 	}
 	log.V(logf.DebugLevel).Info("submitted Order to ACME server")
 
