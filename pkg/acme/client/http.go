@@ -74,6 +74,10 @@ func (it *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if resp != nil {
 		statusCode = resp.StatusCode
 	}
+	for k, v := range resp.Header {
+		fmt.Printf("req %s header %s : %s\n", req.URL, k, v)
+	}
+	fmt.Printf("req %s body %s\n", req.URL, resp.Body)
 
 	labels := []string{
 		req.URL.Scheme,
