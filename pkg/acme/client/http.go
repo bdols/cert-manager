@@ -17,6 +17,7 @@ limitations under the License.
 package client
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -80,6 +81,7 @@ func (it *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	body, _ := io.ReadAll(resp.Body)
 	fmt.Printf("req %s body %s\n", req.URL, body)
+	resp.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	labels := []string{
 		req.URL.Scheme,
