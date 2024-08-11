@@ -18,6 +18,7 @@ package client
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -77,7 +78,8 @@ func (it *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	for k, v := range resp.Header {
 		fmt.Printf("req %s header %s : %s\n", req.URL, k, v)
 	}
-	fmt.Printf("req %s body %s\n", req.URL, resp.Body)
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Printf("req %s body %s\n", req.URL, body)
 
 	labels := []string{
 		req.URL.Scheme,
