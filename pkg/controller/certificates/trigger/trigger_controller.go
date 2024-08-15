@@ -54,9 +54,9 @@ import (
 const (
 	ControllerName = "certificates-trigger"
 	// stopIncreaseBackoff is the number of issuance attempts after which the backoff period should stop to increase
-	stopIncreaseBackoff = 8 // 2 ^ (6 - 1) = 32 = maxDelay
+	stopIncreaseBackoff = 6 // 2 ^ (6 - 1) = 32 = maxDelay
 	// maxDelay is the maximum backoff period
-	maxDelay = 4 * time.Hour
+	maxDelay = 32 * time.Hour
 )
 
 // This controller observes the state of the certificate's currently
@@ -299,7 +299,7 @@ func shouldBackoffReissuingOnFailure(log logr.Logger, c clock.Clock, crt *cmapi.
 	now := c.Now()
 	durationSinceFailure := now.Sub(crt.Status.LastFailureTime.Time)
 
-	initialDelay := time.Minute * 3
+	initialDelay := time.Hour
 	delay := initialDelay
 	failedIssuanceAttempts := 0
 	// It is possible that crt.Status.LastFailureTime != nil &&
@@ -308,7 +308,7 @@ func shouldBackoffReissuingOnFailure(log logr.Logger, c clock.Clock, crt *cmapi.
 	// attempts were introduced). In such case delay = initialDelay.
 	if crt.Status.FailedIssuanceAttempts != nil {
 		failedIssuanceAttempts = *crt.Status.FailedIssuanceAttempts
-		delay = time.Minute * time.Duration(math.Pow(2, float64(failedIssuanceAttempts-1)))
+		delay = time.Hour * time.Duration(math.Pow(2, float64(failedIssuanceAttempts-1)))
 	}
 
 	// Ensure that maximum returned delay is 32 hours
