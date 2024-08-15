@@ -276,7 +276,8 @@ func TestTriggerController_ExpBackoff(t *testing.T) {
 		CMClient:                  cmCl,
 		SharedInformerFactory:     cmFactory,
 		ContextOptions: controllerpkg.ContextOptions{
-			Clock: fakeClock,
+			Metrics: metrics.New(logf.Log, clock.RealClock{}),
+			Clock:   fakeClock,
 		},
 		Recorder:     framework.NewEventRecorder(t, scheme),
 		FieldManager: "cert-manager-certificates-trigger-test",
