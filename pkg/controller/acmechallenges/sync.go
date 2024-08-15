@@ -260,7 +260,7 @@ func (c *controller) handleError(ch *cmacme.Challenge, err error) error {
 
 	if acmeErr.StatusCode >= 400 && acmeErr.StatusCode < 500 {
 		ch.Status.State = cmacme.Errored
-		ch.Status.Reason = fmt.Sprintf("Failed to retrieve Order resource: %v", err)
+		ch.Status.Reason = fmt.Sprintf("Failed to retrieve Challenge resource, ACME error code: %d: error: %v", acmeErr.StatusCode, err)
 		c.metrics.ObserveACMEChallengeStateChange(ch)
 		return err
 	}
