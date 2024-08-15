@@ -262,7 +262,7 @@ func (c *controller) handleError(ch *cmacme.Challenge, err error) error {
 		ch.Status.State = cmacme.Errored
 		ch.Status.Reason = fmt.Sprintf("Failed to retrieve Order resource: %v", err)
 		c.metrics.ObserveACMEChallengeStateChange(ch)
-		return nil
+		return err
 	}
 
 	logf.V(logf.ErrorLevel).ErrorS(err, "what15")
