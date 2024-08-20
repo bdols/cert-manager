@@ -143,12 +143,14 @@ func (c *controller) ProcessItem(ctx context.Context, key string) error {
 		return nil
 	}
 	if err != nil {
+		log.Error(err, "certificate not found")
 		return err
 	}
 
 	// Discover all 'owned' secrets that have the `next-private-key` label
 	secrets, err := certificates.ListSecretsMatchingPredicates(c.secretLister.Secrets(crt.Namespace), isNextPrivateKeyLabelSelector, predicate.ResourceOwnedBy(crt))
 	if err != nil {
+		log.Error(err, "nextPrivateKey secret not found for certificate")
 		return err
 	}
 
@@ -230,6 +232,7 @@ func (c *controller) createNextPrivateKeyRotationPolicyNever(ctx context.Context
 		return c.createAndSetNextPrivateKey(ctx, crt)
 	}
 	if err != nil {
+		log.Error(err, "unable to find secret")
 		return err
 	}
 	if s.Data == nil || len(s.Data[corev1.TLSPrivateKeyKey]) == 0 {
@@ -250,6 +253,7 @@ func (c *controller) createNextPrivateKeyRotationPolicyNever(ctx context.Context
 
 	nextPkSecret, err := c.createNewPrivateKeySecret(ctx, crt, pk)
 	if err != nil {
+		log.Error(err, "unable to create private key secret")
 		return err
 	}
 

@@ -269,6 +269,7 @@ func (c *controller) updateOrApplyStatus(ctx context.Context, crt *cmapi.Certifi
 // will be 0 since it means the CR must be created immediately.
 func shouldBackoffReissuingOnFailure(log logr.Logger, c clock.Clock, crt *cmapi.Certificate, nextCR *cmapi.CertificateRequest) (bool, time.Duration) {
 	if crt.Status.LastFailureTime == nil {
+		log.V(logf.DebugLevel).Info("lastFailureTime is nil")
 		return false, 0
 	}
 

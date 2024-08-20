@@ -97,6 +97,7 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 		return c.createOrder(ctx, cl, o)
 	case o.Status.FinalizeURL == "":
 		dbg.Info("Updating Order status as status.finalizeURL is not set")
+		log.Info("calling updateOrderStatus")
 		_, err := c.updateOrderStatus(ctx, cl, o)
 		if acmeErr, ok := err.(*acmeapi.Error); ok {
 			if acmeErr.StatusCode >= 400 && acmeErr.StatusCode < 500 {
@@ -184,8 +185,9 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 	// here. Be mindful when adding new code below this call to ACME server-
 	// if the new code does not need this ACME order, try to place it above
 	// this call to avoid extra calls to ACME.
+	log.Info("getting ACME order", "url", o.Status.URL)
+	//logf.V(logf.InfoLevel).Infof("getting ACME order: %s", o.Status.URL)
 	acmeOrder, err := getACMEOrder(ctx, cl, o)
-	logf.V(logf.InfoLevel).Infof("getting ACME order: %s", o.Status.URL)
 	// Order probably has been deleted, we cannot recover here.
 	if acmeErr, ok := err.(*acmeapi.Error); ok {
 		if acmeErr.StatusCode >= 400 && acmeErr.StatusCode < 500 {
@@ -201,6 +203,12 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 	}
 
 	switch {
+	case allChallengesFailed(challenges) && acmeOrder.Status == acmeapi.StatusPending:
+		log.V(logf.ErrorLevel).Info("All challenges in a failed state, marking this order as an error...")
+		c.setOrderState(o, string(cmacme.Errored))
+		o.Status.Reason = "Gave up on updates to ACME Order"
+		return nil
+
 	case anyChallengesFailed(challenges):
 		// TODO (@munnerz): instead of waiting for the ACME server to
 		// mark this Order as failed, we could just mark the Order as
@@ -218,7 +226,11 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 				c.setOrderState(o, string(cmacme.Errored))
 				o.Status.Reason = fmt.Sprintf("Failed to retrieve Order resource: %v", err)
 				return nil
+			} else {
+				log.Error(err, "what7777: unexpected ACME error code", "code", acmeErr.StatusCode)
 			}
+		} else {
+			log.V(logf.DebugLevel).Info("Order status", "status", acmeOrder.Status)
 		}
 		if err != nil {
 			logf.V(logf.ErrorLevel).ErrorS(err, "what76")
@@ -563,6 +575,7 @@ func (c *controller) finalizeOrder(ctx context.Context, cl acmecl.Interface, o *
 	// https://datatracker.ietf.org/doc/html/rfc8555#:~:text=A%20request%20to%20finalize%20an%20order%20will%20result%20in%20error,will%20indicate%20what%20action%20the%20client%20should%20take%20(see%20below).
 	if ok && acmeErr.StatusCode == 403 {
 
+		log.Info("calling getACMEOrder")
 		acmeOrder, getOrderErr := getACMEOrder(ctx, cl, o)
 		acmeGetOrderErr, ok := getOrderErr.(*acmeapi.Error)
 		if ok && acmeGetOrderErr.StatusCode >= 400 && acmeGetOrderErr.StatusCode < 500 {
@@ -593,6 +606,7 @@ func (c *controller) finalizeOrder(ctx context.Context, cl acmecl.Interface, o *
 
 	// Before checking whether the call to CreateOrderCert returned a
 	// non-4xx error, ensure the order status is up-to-date.
+	log.Info("calling updateOrderStatus")
 	_, errUpdate := c.updateOrderStatus(ctx, cl, o)
 	if acmeErr, ok := errUpdate.(*acmeapi.Error); ok {
 		if acmeErr.StatusCode >= 400 && acmeErr.StatusCode < 500 {
@@ -651,6 +665,7 @@ func (c *controller) storeCertificateOnStatus(ctx context.Context, o *cmacme.Ord
 // it on Order's status.
 func (c *controller) syncCertificateData(ctx context.Context, cl acmecl.Interface, o *cmacme.Order, issuer cmapi.GenericIssuer) error {
 	log := logf.FromContext(ctx)
+	log.Info("calling updateOrderStatus")
 	acmeOrder, err := c.updateOrderStatus(ctx, cl, o)
 	if acmeErr, ok := err.(*acmeapi.Error); ok {
 		if acmeErr.StatusCode >= 400 && acmeErr.StatusCode < 500 {
