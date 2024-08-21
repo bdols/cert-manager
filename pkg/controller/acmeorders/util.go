@@ -355,6 +355,15 @@ func anyChallengesFailed(chs []*cmacme.Challenge) bool {
 	return false
 }
 
+func allChallengesFailed(chs []*cmacme.Challenge) bool {
+	for _, ch := range chs {
+		if !acme.IsFailureState(ch.Status.State) {
+			return false
+		}
+	}
+	return true
+}
+
 func allChallengesFinal(chs []*cmacme.Challenge) bool {
 	for _, ch := range chs {
 		if !acme.IsFinalState(ch.Status.State) {

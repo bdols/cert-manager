@@ -270,6 +270,10 @@ Dfvp7OOGAN6dEOM4+qR9sdjoSYKEBpsr6GtPAQw4dy753ec5
 	testOrderErrored := gen.OrderFrom(testOrder, gen.SetOrderStatus(erroredStatus))
 	testOrderErrored.Status.FailureTime = &nowMetaTime
 	testOrderErroredWithDetail := gen.OrderFrom(testOrderPending, gen.SetOrderStatus(erroredStatusWithDetail))
+	testOrderPendingGaveUp := gen.OrderFrom(testOrderErrored, gen.SetOrderStatus(erroredStatusWithDetail))
+	testOrderPendingGaveUp.Status.Reason = "Gave up on updates to ACME Order"
+	testOrderErroredGaveUp := gen.OrderFrom(testOrderErrored, gen.SetOrderStatus(erroredStatusWithDetail))
+	testOrderErroredGaveUp.Status.Reason = "Gave up on updates to ACME Order"
 	testOrderValid := testOrderPending.DeepCopy()
 	testOrderValid.Status.State = cmacme.Valid
 	// pem encoded word 'test'
@@ -469,31 +473,35 @@ Dfvp7OOGAN6dEOM4+qR9sdjoSYKEBpsr6GtPAQw4dy753ec5
 			},
 		},
 		"skip creating a Challenge for an already valid authorization, reschedule if the ACME Order is still pending": {
-			order: gen.OrderFrom(testOrder, gen.SetOrderStatus(
-				cmacme.OrderStatus{
-					State:       cmacme.Pending,
-					URL:         "http://testurl.com/abcde",
-					FinalizeURL: "http://testurl.com/abcde/finalize",
-					Authorizations: []cmacme.ACMEAuthorization{
-						{
-							URL:          "http://authzurl",
-							Identifier:   "test.com",
-							InitialState: cmacme.Valid,
-							Challenges: []cmacme.ACMEChallenge{
-								{
-									URL:   "http://chalurl",
-									Token: "token",
-									Type:  "http-01",
-								},
-							},
-						},
-					},
-				},
-			)),
+			order: testOrderPendingGaveUp,
 			builder: &testpkg.Builder{
 				CertManagerObjects: []runtime.Object{testIssuerHTTP01TestCom, testOrderPending},
-				ExpectedActions:    []testpkg.Action{},
-				ExpectedEvents:     []string{},
+				ExpectedActions: []testpkg.Action{
+					testpkg.NewAction(coretesting.NewUpdateSubresourceAction(cmacme.SchemeGroupVersion.WithResource("orders"),
+						"status",
+						testOrder.Namespace, gen.OrderFrom(testOrder, gen.SetOrderStatus(
+							cmacme.OrderStatus{
+								State:       cmacme.Errored,
+								URL:         "http://testurl.com/abcde",
+								FinalizeURL: "http://testurl.com/abcde/finalize",
+								Authorizations: []cmacme.ACMEAuthorization{
+									{
+										URL:          "http://authzurl",
+										Identifier:   "test.com",
+										InitialState: cmacme.Valid,
+										Challenges: []cmacme.ACMEChallenge{
+											{
+												URL:   "http://chalurl",
+												Token: "token",
+												Type:  "http-01",
+											},
+										},
+									},
+								},
+							},
+						)))),
+				},
+				ExpectedEvents: []string{},
 			},
 			acmeClient: &acmecl.FakeACME{
 				FakeGetOrder: func(ctx context.Context, url string) (*acmeapi.Order, error) {
@@ -852,7 +860,7 @@ Dfvp7OOGAN6dEOM4+qR9sdjoSYKEBpsr6GtPAQw4dy753ec5
 			},
 		},
 		"should leave the order state as-is if the challenge is marked invalid but the acme order is pending": {
-			order: testOrderPending,
+			order: testOrderErroredGaveUp,
 			builder: &testpkg.Builder{
 				CertManagerObjects: []runtime.Object{testIssuerHTTP01TestCom, testOrderPending, testAuthorizationChallengeInvalid},
 				ExpectedActions:    []testpkg.Action{},
