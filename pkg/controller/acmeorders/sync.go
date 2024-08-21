@@ -205,8 +205,14 @@ func (c *controller) Sync(ctx context.Context, o *cmacme.Order) (err error) {
 	switch {
 	case allChallengesFailed(challenges) && acmeOrder.Status == acmeapi.StatusPending:
 		log.V(logf.ErrorLevel).Info("All challenges in a failed state, marking this order as an error...")
+		key, err := cache.MetaNamespaceKeyFunc(o)
+		if err != nil {
+			log.Error(err, "failed to construct key for pending Order")
+			return nil
+		}
 		c.setOrderState(o, string(cmacme.Errored))
 		o.Status.Reason = "Gave up on updates to ACME Order"
+		c.scheduledWorkQueue.Add(key, RequeuePeriod)
 		return nil
 
 	case anyChallengesFailed(challenges):
