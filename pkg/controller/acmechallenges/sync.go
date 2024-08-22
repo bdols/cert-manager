@@ -46,7 +46,7 @@ const (
 
 	// How long to wait for an authorization response from the ACME server in acceptChallenge()
 	// before giving up
-	authorizationTimeout = 20 * time.Second
+	authorizationTimeout = 120 * time.Second
 )
 
 // solver solves ACME challenges by presenting the given token and key in an
@@ -427,14 +427,14 @@ func (c *controller) acceptChallenge(ctx context.Context, cl acmecl.Interface, c
 		return c.handleAuthorizationError(ch, err)
 	}
 
-	log.V(logf.InfoLevel).Info(fmt.Sprintf("authorization status: %s for %s", authorization.Status, ch.Name))
+	log.V(logf.InfoLevel).Info("done waiting for authorization status", "status", authorization.Status, "name", ch.Name)
 	ch.Status.State = cmacme.State(authorization.Status)
-	log.V(logf.InfoLevel).Info(fmt.Sprintf("set status: %s for %s", authorization.Status, ch.Name))
+	log.V(logf.InfoLevel).Info("set status", "status", authorization.Status, "name", ch.Name)
 	ch.Status.Reason = "Successfully authorized domain"
-	log.V(logf.InfoLevel).Info(fmt.Sprintf("set reason: %s for %s", ch.Status.Reason, ch.Name))
+	log.V(logf.InfoLevel).Info("set reason", "reason", ch.Status.Reason, "name", ch.Name)
 	c.recorder.Eventf(ch, corev1.EventTypeNormal, reasonDomainVerified, "Domain %q verified with %q validation", ch.Spec.DNSName, ch.Spec.Type)
 	c.metrics.ObserveACMEChallengeStateChange(ch)
-	log.V(logf.InfoLevel).Info(fmt.Sprintf("inc metric for %s", ch.Name))
+	log.V(logf.InfoLevel).Info("inc metric for %s", ch.Name)
 
 	return nil
 }
