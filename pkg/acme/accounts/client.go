@@ -28,7 +28,6 @@ import (
 
 	acmecl "github.com/cert-manager/cert-manager/pkg/acme/client"
 	"github.com/cert-manager/cert-manager/pkg/acme/client/middleware"
-	acmeutil "github.com/cert-manager/cert-manager/pkg/acme/util"
 	cmacme "github.com/cert-manager/cert-manager/pkg/apis/acme/v1"
 	"github.com/cert-manager/cert-manager/pkg/metrics"
 )
@@ -52,7 +51,7 @@ func NewClient(client *http.Client, config cmacme.ACMEIssuer, privateKey *rsa.Pr
 		HTTPClient:   client,
 		DirectoryURL: config.Server,
 		UserAgent:    userAgent,
-		RetryBackoff: acmeutil.RetryBackoff,
+		// aidan patch  RetryBackoff: acmeutil.RetryBackoff,
 	})
 }
 

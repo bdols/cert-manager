@@ -20,8 +20,6 @@ import (
 	"context"
 
 	"golang.org/x/crypto/acme"
-
-	acmeutil "github.com/cert-manager/cert-manager/pkg/acme/util"
 )
 
 // Interface is an Automatic Certificate Management Environment (ACME) client
@@ -60,5 +58,5 @@ type Interface interface {
 }
 
 var _ Interface = &acme.Client{
-	RetryBackoff: acmeutil.RetryBackoff,
+	// RetryBackoff: acmeutil.RetryBackoff,
 }
