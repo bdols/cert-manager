@@ -17,9 +17,9 @@ limitations under the License.
 package client
 
 import (
-	//	"bytes"
+	"bytes"
 	"fmt"
-	//	"io"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -76,14 +76,13 @@ func (it *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if resp != nil {
 		statusCode = resp.StatusCode
 	}
-	/*
-		for k, v := range resp.Header {
-			fmt.Printf("req %s header %s : %s\n", req.URL, k, v)
-		}
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("req %s body %s\n", req.URL, body)
-		resp.Body = io.NopCloser(bytes.NewBuffer(body))
-	*/
+	fmt.Printf("req %s statusCode %d\n", req.URL, statusCode)
+	for k, v := range resp.Header {
+		fmt.Printf("req %s header %s : %s\n", req.URL, k, v)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Printf("req %s body %s\n", req.URL, body)
+	resp.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	labels := []string{
 		req.URL.Scheme,
