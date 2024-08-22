@@ -120,11 +120,13 @@ func (d *DynamicAuthority) Run(ctx context.Context) error {
 		}),
 	)
 	informer := factory.Core().V1().Secrets().Informer()
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	if _, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    d.handleAdd,
 		UpdateFunc: d.handleUpdate,
 		DeleteFunc: d.handleDelete,
-	})
+	}); err != nil {
+		return fmt.Errorf("error setting up event handler: %v", err)
+	}
 
 	d.lister = factory.Core().V1().Secrets().Lister().Secrets(d.SecretNamespace)
 	d.client = cl.CoreV1().Secrets(d.SecretNamespace)
@@ -316,7 +318,7 @@ func (d *DynamicAuthority) caRequiresRegeneration(s *corev1.Secret) bool {
 		return true
 	}
 	// renew the root CA when the current one is 2/3 of the way through its life
-	if time.Until(x509Cert.NotAfter) < (x509Cert.NotBefore.Sub(x509Cert.NotAfter) / 3) {
+	if time.Until(x509Cert.NotAfter) < (x509Cert.NotAfter.Sub(x509Cert.NotBefore) / 3) {
 		d.log.V(logf.InfoLevel).Info("Root CA certificate is nearing expiry. Regenerating...")
 		return true
 	}

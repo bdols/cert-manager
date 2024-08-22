@@ -18,6 +18,7 @@ package acmechallenges
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -132,7 +133,9 @@ func (c *controller) Register(ctx *controllerpkg.Context) (workqueue.RateLimitin
 	}
 
 	// register handler functions
-	challengeInformer.Informer().AddEventHandler(&controllerpkg.QueuingEventHandler{Queue: c.queue})
+	if _, err := challengeInformer.Informer().AddEventHandler(&controllerpkg.QueuingEventHandler{Queue: c.queue}); err != nil {
+		return nil, nil, fmt.Errorf("error setting up event handler: %v", err)
+	}
 
 	c.metrics = ctx.Metrics
 	c.helper = issuer.NewHelper(c.issuerLister, c.clusterIssuerLister)

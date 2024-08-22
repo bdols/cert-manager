@@ -1,8 +1,11 @@
 issues:
   exclude-rules:
     - linters:
+        - staticcheck
+        - govet
+        - usestdlibvars
+        - misspell
         - dogsled
-        - errcheck
         - promlinter
         - errname
         - exhaustive
@@ -38,7 +41,6 @@ linters:
     - errcheck
     - errchkjson
     - errname
-    - execinquery
     - exhaustive
     - exportloopref
     - forbidigo
