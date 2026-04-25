@@ -1,6 +1,6 @@
 module github.com/cert-manager/cert-manager/integration-tests
 
-go 1.23.0
+go 1.24
 
 // Do not remove this comment:
 // please place any replace statements here at the top for visibility and add a
@@ -35,7 +35,7 @@ require (
 
 require (
 	cel.dev/expr v0.19.1 // indirect
-	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
+	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
